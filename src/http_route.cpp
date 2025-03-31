@@ -20,9 +20,7 @@ HttpRoute::HttpRoute(HttpRoute &&other) noexcept
   other.m_parent = nullptr;
 };
 
-void HttpRoute::set_handler(RequestHandler handler) {
-  m_handler = std::move(handler);
-}
+void HttpRoute::set_handler(RequestHandler handler) { m_handler = handler; }
 
 void HttpRoute::execute(const HttpRequest &request,
                         HttpResponse &response) const {

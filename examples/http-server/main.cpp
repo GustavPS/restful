@@ -4,6 +4,7 @@
 #include "restful/http_server.hpp"
 #include <exception>
 #include <iostream>
+#include <memory>
 
 int main() {
   try {
@@ -15,25 +16,29 @@ int main() {
     };
 
     restful::HttpServer server{8093};
-    restful::HttpRouter router{"/first/:mid"};
-    router.register_handler(restful::HttpRequest::HttpRequestType::Get,
-                            "/hello/:id",
-                            [](const restful::HttpRequest &request,
-                               restful::HttpResponse &response) {
-                              restful::json json{};
-                              std::cout << "hi from hello" << std::endl;
-                              json["id"] = request.get_param("id")->get();
-                              json["mid"] = request.get_param("mid")->get();
-                              response.set_body(json);
-                            });
-    router.register_handler(restful::HttpRequest::HttpRequestType::Get,
-                            "/hello2",
-                            [](const restful::HttpRequest &request,
-                               restful::HttpResponse &response) {
-                              restful::json json{};
-                              std::cout << "hi from hello2" << std::endl;
-                              response.set_body(json);
-                            });
+    auto router = std::make_shared<restful::HttpRouter>("/first/:mid");
+    router->register_handler(restful::HttpRequest::HttpRequestType::Get,
+                             "/testLambda", testLambda);
+    router->register_handler(restful::HttpRequest::HttpRequestType::Get,
+                             "/testLambda2", testLambda);
+    router->register_handler(restful::HttpRequest::HttpRequestType::Get,
+                             "/hello/:id",
+                             [](const restful::HttpRequest &request,
+                                restful::HttpResponse &response) {
+                               restful::json json{};
+                               std::cout << "hi from hello" << std::endl;
+                               json["id"] = request.get_param("id")->get();
+                               json["mid"] = request.get_param("mid")->get();
+                               response.set_body(json);
+                             });
+    router->register_handler(restful::HttpRequest::HttpRequestType::Get,
+                             "/hello2",
+                             [](const restful::HttpRequest &request,
+                                restful::HttpResponse &response) {
+                               restful::json json{};
+                               std::cout << "hi from hello2" << std::endl;
+                               response.set_body(json);
+                             });
 
     server.register_middleware([](const restful::HttpRequest &request,
                                   restful::HttpResponse &response) {
@@ -41,14 +46,14 @@ int main() {
       return true;
     });
 
-    router.register_middleware([](const auto &request, auto &response) {
+    server.register_handler(router);
+
+    router->register_middleware([](const auto &request, auto &response) {
       std::cout << "Hi from router mw" << std::endl;
       response.set_body("Router MW said nonono sir please stop");
 
       return true;
     });
-
-    server.register_handler(std::move(router));
 
     server.start();
   } catch (const std::exception &e) {
