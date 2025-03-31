@@ -4,9 +4,7 @@
 #include <cassert>
 #include <iostream>
 #include <regex>
-#include <sstream>
 #include <string>
-#include <string_view>
 #include <utility>
 
 namespace restful {
@@ -34,9 +32,8 @@ bool HttpRoute::execute_middlewares(const HttpRequest &request,
                                     HttpResponse &response) const {
   HttpRouter *parent = m_parent;
   while (parent != nullptr) {
-    for (auto mw : parent->m_middlewares) {
-      bool result = mw(request, response);
-      if (!result) {
+    for (auto &middleware : parent->m_middlewares) {
+      if (!middleware(request, response)) {
         return false;
       }
     }

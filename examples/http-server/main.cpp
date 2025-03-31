@@ -6,6 +6,15 @@
 #include <iostream>
 #include <memory>
 
+class CustomException : public std::exception {
+public:
+  explicit CustomException(const std::string &message) : m_message(message) {}
+  const char *what() const noexcept override { return m_message.c_str(); }
+
+private:
+  std::string m_message;
+};
+
 int main() {
   try {
     auto testLambda = [](const restful::HttpRequest &request,
@@ -50,10 +59,16 @@ int main() {
 
     router->register_middleware([](const auto &request, auto &response) {
       std::cout << "Hi from router mw" << std::endl;
-      response.set_body("Router MW said nonono sir please stop");
-
+      // throw CustomException("No cookies for you :(");
       return true;
     });
+
+    server.register_middleware(
+        [](const std::exception &error, const auto &request, auto &response) {
+          const std::string error_message = error.what();
+          response.set_body("Something happened: " + error_message);
+          response.set_status_code(500);
+        });
 
     server.start();
   } catch (const std::exception &e) {

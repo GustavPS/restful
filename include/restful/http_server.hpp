@@ -8,6 +8,9 @@ class HttpResponse;
 class HttpServer : public HttpRouter {
 public:
   explicit HttpServer(int port);
+  // Bring the base implementation in to scope
+  using HttpRouter::register_middleware;
+  void register_middleware(ErrorHandler &&handler);
   void start();
   void stop();
 
@@ -18,6 +21,7 @@ private:
   int m_port;
   int m_server_fd{-1};
   std::vector<std::thread> m_client_threads{};
+  std::vector<ErrorHandler> m_error_handlers{};
 };
 
 } // namespace restful

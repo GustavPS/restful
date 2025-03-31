@@ -17,15 +17,22 @@ public:
   // Delete copy constructor and assignment operator
   HttpRouter(const HttpRouter &) = delete;
   HttpRouter &operator=(const HttpRouter &) = delete;
+
   void register_handler(HttpRequest::HttpRequestType endpoint, std::string path,
                         RequestHandler &&handler);
-  void register_handler(HttpRequest::HttpRequestType endpoint, std::string path,
-                        RequestHandler &handler);
   void register_handler(std::shared_ptr<HttpRouter> router);
   void register_middleware(Middleware &&middleware);
 
 protected:
   std::vector<HttpRoute> m_get_routes{};
+  std::vector<HttpRoute> m_post_routes{};
+  std::vector<HttpRoute> m_put_routes{};
+  std::vector<HttpRoute> m_delete_routes{};
+  std::vector<HttpRoute> m_patch_routes{};
+  std::vector<HttpRoute> m_options_routes{};
+  std::vector<HttpRoute> m_head_routes{};
+  std::vector<HttpRoute> m_trace_routes{};
+
   std::vector<std::shared_ptr<HttpRouter>> m_http_routers{};
   std::vector<Middleware> m_middlewares{};
 
@@ -34,6 +41,8 @@ private:
   const HttpRoute *
   find_route(const std::string &full_path,
              const HttpRequest::HttpRequestType &request_type) const;
+  const std::vector<HttpRoute> &
+  get_routes(const HttpRequest::HttpRequestType &) const;
 
   HttpRouter *m_parent{nullptr};
   HttpPath m_path;

@@ -5,6 +5,7 @@
 #include "restful/http_response.hpp"
 #include "restful/http_route.hpp"
 #include "restful/http_router.hpp"
+#include <exception>
 #include <iostream>
 #include <netinet/in.h>
 #include <nlohmann/json.hpp>
@@ -64,6 +65,9 @@ void HttpServer::stop() {
     }
   }
 }
+void HttpServer::register_middleware(ErrorHandler &&handler) {
+  m_error_handlers.push_back(std::forward<ErrorHandler>(handler));
+}
 
 void HttpServer::listen_for_connections() {
   if (m_server_fd == -1) {
@@ -81,6 +85,7 @@ void HttpServer::listen_for_connections() {
       continue;
     }
     std::cout << "New client connected\n";
+
     std::thread client_thread(&HttpServer::handle_request, this, client_socket);
     m_client_threads.push_back(std::move(client_thread));
   }
@@ -116,19 +121,43 @@ void HttpServer::handle_request(int client_socket) {
   }
 
   HttpResponse response{};
+  std::optional<HttpRequest> request;
+  const HttpRoute *route;
+
+  // Parse request, can fail. In that case emplace should fail sending us to the
+  // catch
   try {
-    HttpRequest request = detail::parse_request(request_data);
-    const HttpRoute *route =
-        find_route(request.full_path, request.request_type);
+    request.emplace(detail::parse_request(request_data));
+    route = find_route(request->full_path, request->request_type);
     if (route == nullptr) {
-      throw HttpNotFound("Not Found");
+      response.set_status_code(404);
+      send_response(client_socket, response);
+      return;
     }
-    request.set_params(route->extract_path_params(request.full_path));
-    route->execute(request, response);
-  } catch (ParseException caught) {
+    request->set_params(route->extract_path_params(request->full_path));
+  } catch (ServerException &error) {
+    response.set_status_code(error.get_code());
+    send_response(client_socket, response);
+    return;
+  } catch (...) {
     response.set_status_code(500);
-  } catch (HttpNotFound caught) {
-    response.set_status_code(404);
+    send_response(client_socket, response);
+    return;
+  }
+
+  // Handle the endpoint, can fail because of user defined bugs
+  try {
+    route->execute(request.value(), response);
+  } catch (ServerException &error) {
+    response.set_status_code(error.get_code());
+    for (const auto &handler : m_error_handlers) {
+      handler(error, request.value(), response);
+    }
+  } catch (std::exception &error) {
+    response.set_status_code(500);
+    for (const auto &handler : m_error_handlers) {
+      handler(error, request.value(), response);
+    }
   }
   send_response(client_socket, response);
 }
