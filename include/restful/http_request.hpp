@@ -9,7 +9,16 @@ namespace restful {
 
 class HttpRequest {
 public:
-  enum HttpRequestType { Get, Post, Put, Delete, Patch, Options, Head, Trace };
+  enum HttpRequestType {
+    Get = 0,
+    Post,
+    Put,
+    Delete,
+    Patch,
+    Options,
+    Head,
+    Trace // Important to be kept at end, used for array size
+  };
 
   explicit HttpRequest(std::string full_path, HttpRequestType request_type,
                        HttpHeader headers, json body);
